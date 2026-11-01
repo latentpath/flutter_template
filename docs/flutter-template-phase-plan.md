@@ -84,8 +84,8 @@ Phase 3 先用可控 Fake 验证设置队列与重建时序，再接入真实存
 
 | 阶段 | 状态 | 负责人 | 验证记录/证据 | 未解决项 |
 | --- | --- | --- | --- | --- |
-| Phase 0 | 决策材料已完成，待阶段门确认 | 用户/维护者待确认 | [Phase 0 SPEC 与基线记录](specs/phase-0-implementation-baseline.md)；Android doctor 通过；双平台构建待 Phase 1 | iOS 需在已配置 remote 的 GitHub Actions macos-26 / Xcode 26.6 执行；候选依赖与两平台构建尚未验证 |
-| Phase 1 | 待开始 | 待指定 | 待执行 | 待实施时记录 |
+| Phase 0 | 已完成（用户确认，2026-11-01） | 用户确认 | [Phase 0 SPEC 与基线记录](specs/phase-0-implementation-baseline.md)；[GitHub Actions 运行 #1 通过](https://github.com/latentpath/flutter_template/actions/runs/41286294315) | 无 |
+| Phase 1 | CI 与首次构建已通过，整体待验收 | 待指定 | 提交 `722ccdd`：Android `flutter analyze` / `flutter test` / debug APK 通过；iOS Simulator build 通过 | Phase 1 骨架实施中；最终提交的干净检出及双平台构建尚未验收，见 [Phase 1 SPEC](specs/phase-1-minimal-skeleton.md)；不要据此标记完成 |
 | Phase 2 | 待开始 | 待指定 | 待执行 | 待实施时记录 |
 | Phase 3 | 待开始 | 待指定 | 待执行 | 待实施时记录 |
 | Phase 4 | 待开始 | 待指定 | 待执行 | 待实施时记录 |

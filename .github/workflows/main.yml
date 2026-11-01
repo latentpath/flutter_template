@@ -16,6 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - run: java -version
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -23,7 +29,7 @@ jobs:
           flutter-version-file: .fvmrc
 
       - run: flutter --version
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - run: flutter analyze
       - run: flutter test
       - run: flutter build apk --debug
@@ -40,7 +46,9 @@ jobs:
           channel: stable
           flutter-version-file: .fvmrc
 
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
       - run: xcodebuild -version
       - run: flutter --version
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - run: flutter build ios --simulator --no-codesign
