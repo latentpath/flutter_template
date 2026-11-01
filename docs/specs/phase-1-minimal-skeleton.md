@@ -1,6 +1,6 @@
 # Phase 1 SPEC：最小工程骨架
 
-状态：实施中；阶段门尚未验收。
+状态：Phase 1 已由用户确认完成（2026-11-01）。
 
 ## 治理依据与范围
 
@@ -16,10 +16,10 @@
 | 检查 | 结果 / 证据 |
 | --- | --- |
 | 实施和依赖审查 | 已完成初步审查；插件运行行为留待后续阶段 |
-| 干净检出依赖解析、分析、测试 | 未提交源码快照通过；最终提交的干净检出待执行 |
-| Android debug 构建 | 未提交工作区本地构建通过；最终提交 CI 待执行 |
-| iOS Simulator 构建 | 待执行；本机 Linux，使用 macOS CI |
-| 阶段验收 | 待人确认 |
+| 干净检出依赖解析、分析、测试 | 提交 `bed7df4` 的 Android CI 通过；iOS CI 依赖解析通过 |
+| Android debug 构建 | 提交 `bed7df4` 的 Android CI 通过 |
+| iOS Simulator 构建 | 提交 `bed7df4` 的 macOS CI 通过 |
+| 阶段验收 | 用户于 2026-11-01 明确确认完成 |
 
 ## 依赖审查记录（2026-11-01）
 
@@ -46,7 +46,9 @@
 - Ubuntu 26.04.1，Flutter 3.47.9 / Dart 3.13.7；Android SDK 36.1.0、JDK 25.0.4，项目配置 AGP 9.1.0 / Gradle 9.3.1 / Kotlin 2.4.0，iOS deployment target 15.0。`flutter doctor -v` 中 Android 检查通过；Linux desktop 工具链缺失，不属于首版验收平台。
 - `flutter pub get --enforce-lockfile`、`flutter analyze`、`flutter test`：工作区通过；将版本控制文件和未跟踪源码复制到无项目构建缓存的临时快照后再次通过，15 项测试通过。快照不是最终提交的干净检出。
 - `flutter build apk --debug`：工作区通过，产物 `build/app/outputs/flutter-apk/app-debug.apk`；非最终提交 CI 证据。
-- 最终提交的干净检出和 iOS Simulator 构建尚未执行；本机无 macOS/Xcode。CI 使用 `macos-26` 和 Xcode 26.6，具体 runner 镜像是否仍含该版本需在最终 CI 中确认。
+- [GitHub Actions 运行 #2](https://github.com/latentpath/flutter_template/actions/runs/41288782574) 对提交 `bed7df4ec3b71e61f0e0faff4fdf4311cc671363` 通过：Android job 的严格锁文件依赖解析、分析、测试和 debug APK 构建成功；macOS 26 job 选择 Xcode 26.6，严格锁文件依赖解析及 iOS Simulator 无签名构建成功。两项 job 均从 checkout 执行。
 - FVM 4.3.2 已安装至用户 Pub 缓存；`fvm flutter --version` 和 `fvm flutter doctor -v` 显示 FVM 管理的 Flutter 3.47.9 / Dart 3.13.7，Android 检查通过；Linux desktop 工具链缺失。常规构建与测试使用 PATH 上版本一致的 Flutter。
 
-阶段状态维持“待验收”；不得从本地测试或历史 CI 推断最终双平台构建通过。
+用户已根据提交 `bed7df4` 的 CI 阶段门证据确认 Phase 1 完成；Phase 2 尚未开始。
+
+上述 CI 证明该提交的构建与检查通过；插件原生运行行为、真机和发布验证不在此证据范围。当前文档更新为记录证据，不改变已验证的应用代码。

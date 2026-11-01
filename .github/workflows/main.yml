@@ -51,4 +51,17 @@ jobs:
       - run: xcodebuild -version
       - run: flutter --version
       - run: flutter pub get --enforce-lockfile
-      - run: flutter build ios --simulator --no-codesign
+      - name: Build iOS Simulator
+        id: ios_build
+        run: |
+          set -o pipefail
+          flutter build ios --simulator --no-codesign 2>&1 | tee ios-build.log
+
+      - name: Upload iOS build log
+        if: failure() && steps.ios_build.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log
+          path: ios-build.log
+          if-no-files-found: ignore
+          retention-days: 7
