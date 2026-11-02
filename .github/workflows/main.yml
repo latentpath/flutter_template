@@ -30,6 +30,8 @@ jobs:
 
       - run: flutter --version
       - run: flutter pub get --enforce-lockfile
+      - run: flutter gen-l10n
+      - run: python3 tool/check_translations.py
       - run: flutter analyze
       - run: flutter test
       - run: flutter build apk --debug
@@ -51,6 +53,8 @@ jobs:
       - run: xcodebuild -version
       - run: flutter --version
       - run: flutter pub get --enforce-lockfile
+      - run: flutter gen-l10n
+      - run: python3 tool/check_translations.py
       - name: Build iOS Simulator
         id: ios_build
         run: |
