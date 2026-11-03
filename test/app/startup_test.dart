@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_template/app/config/app_config.dart';
@@ -14,6 +16,27 @@ void main() {
         repositoryFactory: () => repository,
       ).load();
 
+      expect(resources.initialSettings, const SettingsState());
+      expect(repository.writes, 0);
+    },
+  );
+
+  test(
+    'preference read timeout uses defaults and does not write them back',
+    () async {
+      final repository = _DelayedReadRepository();
+      final resources = await DefaultBootstrap(
+        configLoader: AppConfig.fromEnvironment,
+        repositoryFactory: () => repository,
+        preferenceBudget: const Duration(milliseconds: 1),
+      ).load();
+
+      expect(resources.initialSettings, const SettingsState());
+      expect(repository.writes, 0);
+      repository.readResult.complete(
+        const SettingsState(themeMode: ThemeMode.dark),
+      );
+      await Future<void>.delayed(Duration.zero);
       expect(resources.initialSettings, const SettingsState());
       expect(repository.writes, 0);
     },
@@ -42,6 +65,20 @@ final class _FailingReadRepository implements SettingsRepository {
       Future.error(const SettingsStorageException());
   @override
   Future<void> writeThemeMode(ThemeMode value) async => writes++;
+  @override
+  Future<void> writeLocale(Locale? value) async => writes++;
+}
+
+final class _DelayedReadRepository implements SettingsRepository {
+  final readResult = Completer<SettingsState>();
+  int writes = 0;
+
+  @override
+  Future<SettingsState> read() => readResult.future;
+
+  @override
+  Future<void> writeThemeMode(ThemeMode value) async => writes++;
+
   @override
   Future<void> writeLocale(Locale? value) async => writes++;
 }

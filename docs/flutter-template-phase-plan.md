@@ -86,8 +86,8 @@ Phase 3 先用可控 Fake 验证设置队列与重建时序，再接入真实存
 | --- | --- | --- | --- | --- |
 | Phase 0 | 已完成（用户确认，2026-11-01） | 用户确认 | [Phase 0 SPEC 与基线记录](specs/phase-0-implementation-baseline.md)；[GitHub Actions 运行 #1 通过](https://github.com/latentpath/flutter_template/actions/runs/41286294315) | 无 |
 | Phase 1 | 已完成（用户确认，2026-11-01） | 用户确认 | 提交 `bed7df4`：[GitHub Actions 运行 #2](https://github.com/latentpath/flutter_template/actions/runs/41288782574) 的 Android 检查和 debug 构建、iOS Simulator 构建通过；详见 [Phase 1 SPEC](specs/phase-1-minimal-skeleton.md) | 设备及发布验证属于后续范围 |
-| Phase 2 | 实施中（阶段门待审阅） | Codex 协作实施，待用户审阅 | [Phase 2 SPEC 执行记录](specs/phase-2-startup-core-ui.md)；本地生成/分析/24 项测试及 Android debug 构建通过 | CI 已恢复但本次修改尚未运行；iOS Simulator/语言运行、隔离网络观察和部分系统行为未验证；不得据此推断阶段完成 |
-| Phase 3 | 待开始 | 待指定 | 待执行 | 待实施时记录 |
+| Phase 2 | 已完成（用户确认，2026-11-03） | 用户确认 | [Phase 2 SPEC 执行记录](specs/phase-2-startup-core-ui.md)；GitHub Actions run #4 的 Android/iOS Simulator jobs 通过；本地生成/翻译检查/分析/33 项测试及 Android debug 构建通过 | 新增测试尚未进入 CI；没有设备手动验收或系统级网络隔离记录；逐初始化步骤故障矩阵仍不完整；以上限制已记录，不延伸为 Phase 3 能力验收 |
+| Phase 3 | 实施中（未通过阶段门） | 待指定 | [Phase 3 SPEC](specs/phase-3-settings-persistence.md) | 用户确认 Android 模拟器重启验证通过；iOS 跨进程重启及完整并发矩阵待验证；阶段完成须由用户确认 |
 | Phase 4 | 待开始 | 待指定 | 待执行 | 待实施时记录 |
 | Phase 5 | 待开始 | 待指定 | 待执行 | 待实施时记录 |
 | Phase 6 | 待开始 | 待指定 | 待执行 | 待实施时记录 |

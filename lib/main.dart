@@ -27,7 +27,7 @@ void main() {
     StartupCoordinator(
       bootstrap: DefaultBootstrap(
         configLoader: AppConfig.fromEnvironment,
-        repositoryFactory: MemorySettingsRepository.new,
+        repositoryFactory: PreferencesSettingsRepository.new,
       ),
     ),
   );

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +26,42 @@ class TemplateApp extends StatefulWidget {
 }
 
 class _TemplateAppState extends State<TemplateApp> {
+  bool _recovering = false;
+  bool _recoveryFailed = false;
+  int _scopeGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.resources.settingsQueue.onUnexpectedDispose = () {
+      if (mounted) scheduleMicrotask(_recover);
+    };
+  }
+
+  Future<void> _recover() async {
+    if (!mounted || _recovering) return;
+    setState(() {
+      _recovering = true;
+      _recoveryFailed = false;
+    });
+    try {
+      await widget.resources.recoverSettings();
+      if (mounted) {
+        setState(() {
+          _scopeGeneration++;
+          _recovering = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _recovering = false;
+          _recoveryFailed = true;
+        });
+      }
+    }
+  }
+
   late final GoRouter _router = GoRouter(
     initialLocation: widget.initialLocation,
     routes: [
@@ -40,22 +78,47 @@ class _TemplateAppState extends State<TemplateApp> {
   );
   @override
   void dispose() {
+    widget.resources.settingsQueue.onUnexpectedDispose = null;
     _router.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => ProviderScope(
-    retry: (retryCount, error) => null,
-    overrides: [
-      settingsRepositoryProvider.overrideWithValue(widget.resources.repository),
-      appConfigProvider.overrideWithValue(widget.resources.config),
-      settingsInitialStateProvider.overrideWithValue(
-        widget.resources.initialSettings,
-      ),
-    ],
-    child: _AppRouter(router: _router),
-  );
+  Widget build(BuildContext context) {
+    if (_recovering || _recoveryFailed) {
+      final zh =
+          WidgetsBinding.instance.platformDispatcher.locale.languageCode ==
+          'zh';
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: _recovering
+                ? const CircularProgressIndicator()
+                : Text(
+                    zh
+                        ? '设置恢复失败，请重启应用。'
+                        : 'Settings recovery failed. Please restart the app.',
+                  ),
+          ),
+        ),
+      );
+    }
+    return ProviderScope(
+      key: ValueKey(_scopeGeneration),
+      retry: (retryCount, error) => null,
+      overrides: [
+        settingsQueueProvider.overrideWithValue(widget.resources.settingsQueue),
+        settingsRepositoryProvider.overrideWithValue(
+          widget.resources.repository,
+        ),
+        appConfigProvider.overrideWithValue(widget.resources.config),
+        settingsInitialStateProvider.overrideWithValue(
+          widget.resources.initialSettings,
+        ),
+      ],
+      child: _AppRouter(router: _router),
+    );
+  }
 }
 
 class _AppRouter extends ConsumerWidget {
@@ -134,10 +197,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _saving = false;
   Future<void> _save(Future<SettingsWriteResult> Function() action) async {
     setState(() => _saving = true);
-    final result = await action();
+    final SettingsWriteResult result;
+    try {
+      result = await action();
+    } catch (error, stack) {
+      FlutterError.reportError(
+        FlutterErrorDetails(exception: error, stack: stack),
+      );
+      if (mounted) setState(() => _saving = false);
+      return;
+    }
     if (!mounted) return;
     setState(() => _saving = false);
-    if (result is SettingsWriteFailure) {
+    if (result is SettingsWriteFailure &&
+        result.kind != SettingsFailureKind.cancelled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).saveFailed)),
       );
