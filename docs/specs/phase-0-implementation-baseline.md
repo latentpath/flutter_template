@@ -1,5 +1,7 @@
 # Phase 0 SPEC：实施基线
 
+> 2026-11-04 治理修订：本文的阶段要求和验证计划为历史记录；现行验证范围以 [开发说明 §1.3–1.4](../flutter-template-development-revised.md) 和 [阶段计划](../flutter-template-phase-plan.md) 为准，iOS 验证不再是阶段门。
+
 > 日期：2026-11-01  
 > 状态：Phase 0 已由用户确认完成（2026-11-01）；候选 Flutter SDK 与原生脚手架已通过 Android / iOS Simulator 首次 CI 构建。核心插件候选尚未纳入验证，属于 Phase 1 工作。
 > 目标工程：`/home/chunmli/Development/apps/Flutter/flutter_template`  

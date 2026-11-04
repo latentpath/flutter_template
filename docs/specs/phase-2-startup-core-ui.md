@@ -1,5 +1,7 @@
 # Phase 2 SPEC：启动与核心界面执行计划
 
+> 2026-11-04 治理修订：本文的阶段要求和验证计划为历史记录；现行验证范围以 [开发说明 §1.3–1.4](../flutter-template-development-revised.md) 和 [阶段计划](../flutter-template-phase-plan.md) 为准，iOS 验证不再是阶段门。
+
 > 日期：2026-11-02
 > 状态：已完成（用户确认，2026-11-03）；核心实现及双平台 CI 已验证，本地补充行为测试已通过。未验证项与范围限制保留在记录中，不代表 Android/iOS 真机、设备级网络隔离或 Phase 3 能力已验收。
 > 目标工程：`/home/chunmli/Development/apps/Flutter/flutter_template`
@@ -69,7 +71,7 @@
 | 干净检出生成、分析、测试及 Android debug / iOS Simulator 构建 | 提交 `753392c` 的 GitHub Actions run #4 中 Android 与 iOS Simulator job 均通过；本地严格锁文件解析、生成、翻译检查、分析、33 项测试及 Android debug 构建通过。新增测试尚未进入 CI；当前工作区有未提交测试改动 | 已验证（CI/本地；新增测试仅本地） |
 | 阶段审阅与完成决定 | 用户于 2026-11-03 明确确认 Phase 2 完成 | 已确认完成 |
 
-本阶段完成可为 M1 可运行外壳提供证据；不证明真实存储、跨重启恢复、平台插件运行、真机或发布验收。设置队列完整并发矩阵与 Android/iOS 重启验证仍是 Phase 3 的退出条件。
+本阶段完成可为 M1 可运行外壳提供证据；不证明真实存储、跨重启恢复、平台插件运行、真机或发布验收。设置队列完整并发矩阵与 Android 重启验证是修订后的 Phase 3 退出条件；iOS 重启验证不阻塞。
 
 ## 实施记录与未解决项
 

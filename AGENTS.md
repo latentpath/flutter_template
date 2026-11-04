@@ -1,6 +1,6 @@
 # Project Constitution
 
-> 项目章程依据 [docs/flutter-template-development-revised.md](docs/flutter-template-development-revised.md) 填写。该开发说明目前是设计草案，声明尚未据此完成实现和 Android/iOS 双平台验证；本章程记录目标约束，不代表功能已交付。实现状态以仓库代码、配置、锁文件和可复核的验证证据为准。开发说明与本章程冲突时，SPEC 和仓库可验证事实仍按 Harness 工作流裁决；需改变规范时先修订设计/阶段规范并完成相应审批。
+> 项目章程依据 [docs/flutter-template-development-revised.md](docs/flutter-template-development-revised.md) 填写。该开发说明是设计草案，尚未据此完成全部实现与验收；本章程记录目标约束，不代表功能已交付。实现状态以仓库代码、配置、锁文件和可复核的验证证据为准。开发说明与本章程冲突时，SPEC 和仓库可验证事实仍按 Harness 工作流裁决；需改变规范时先修订设计/阶段规范并完成相应审批。
 
 ## Role
 
@@ -43,7 +43,7 @@
 - Networking: `dio`，限制在 API Service/数据边界；Fake 默认实现不创建 API Service、不访问公网。
 - Persistence: `shared_preferences`（优先评估 `SharedPreferencesAsync`）只保存非敏感小型偏好；不用作数据库或安全存储。
 - Routing / localization: `go_router`；Flutter `flutter_localizations`、ARB/`gen_l10n` 和 `intl`。
-- Other pinned choices: `package_info_plus` 读取应用信息、`url_launcher` 打开外链、`flutter_lints` 静态检查、Flutter `flutter_test` 测试。具体依赖版本以经双平台验证并提交的 `pubspec.lock` 为准。安全存储、数据库及其他平台插件按需评估后引入，不预先安装。
+- Other pinned choices: `package_info_plus` 读取应用信息、`url_launcher` 打开外链、`flutter_lints` 静态检查、Flutter `flutter_test` 测试。具体依赖版本以经 Android 验证并提交的 `pubspec.lock` 为准；iOS 兼容性及验证结果如实记录。安全存储、数据库及其他平台插件按需评估后引入，不预先安装。
 - 以上是设计目标栈而非当前已验证事实。增加、替换或升级依赖时，审查维护状态、许可证、SDK/平台约束、权限、隐私和失败行为，并更新锁文件及验证记录。
 
 ## Forbidden
@@ -55,6 +55,11 @@
 - 对写操作启用自动重试，或在设置 Notifier 重建时绕过旧写入排空与同一仓库重读屏障。
 - 建立多个竞争的应用级设置状态源、无依据的通用框架/领域层，或把单个业务项目的需求塞入模板核心。
 - 将未实现或未验证的设计要求描述成已经交付、构建通过或设备验收通过。
+
+## 验证范围
+
+- 当前模板阶段门以 Android Studio 模拟器或 Android 设备及 GitHub CI 可执行的检查为准。iOS 构建、模拟器、真机和跨重启验证均不作为阶段完成或推进的前提；未验证项如实记录，不能据此声称 iOS 已验证。已有 iOS CI 可作为非阻塞的补充证据。
+- iOS 仍是兼容目标；面向 iOS 的派生应用在实际发布前自行完成其目标平台所需验证。
 
 ## Phase Governance
 

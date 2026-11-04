@@ -39,6 +39,62 @@ void main() {
     },
   );
 
+  test(
+    'same-key writes run in order and publish only after each succeeds',
+    () async {
+      final repository = _SequencedRepository();
+      final container = ProviderContainer(
+        overrides: [settingsRepositoryProvider.overrideWithValue(repository)],
+        retry: (count, error) => null,
+      );
+      addTearDown(container.dispose);
+      final notifier = container.read(settingsProvider.notifier);
+      final first = notifier.setThemeMode(ThemeMode.dark);
+      final second = notifier.setThemeMode(ThemeMode.light);
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.started, [ThemeMode.dark]);
+      expect(container.read(settingsProvider).themeMode, ThemeMode.system);
+      repository.gates[0].complete();
+      expect(
+        (await first as SettingsWriteSuccess).state.themeMode,
+        ThemeMode.dark,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.started, [ThemeMode.dark, ThemeMode.light]);
+      expect(container.read(settingsProvider).themeMode, ThemeMode.dark);
+      repository.gates[1].complete();
+      expect(
+        (await second as SettingsWriteSuccess).state.themeMode,
+        ThemeMode.light,
+      );
+      expect(container.read(settingsProvider).themeMode, ThemeMode.light);
+    },
+  );
+
+  test('successful cross-key writes merge after the first commit', () async {
+    final repository = _ControlledRepository();
+    final container = ProviderContainer(
+      overrides: [settingsRepositoryProvider.overrideWithValue(repository)],
+      retry: (count, error) => null,
+    );
+    addTearDown(container.dispose);
+    final notifier = container.read(settingsProvider.notifier);
+    final first = notifier.setThemeMode(ThemeMode.dark);
+    final second = notifier.setLocale(const Locale('zh'));
+    await Future<void>.delayed(Duration.zero);
+    expect(repository.localeWrites, 0);
+    repository.theme.complete();
+    expect(await first, isA<SettingsWriteSuccess>());
+    await Future<void>.delayed(Duration.zero);
+    expect(repository.localeWrites, 1);
+    repository.locale.complete();
+    expect(await second, isA<SettingsWriteSuccess>());
+    expect(
+      container.read(settingsProvider),
+      const SettingsState(themeMode: ThemeMode.dark, locale: Locale('zh')),
+    );
+  });
+
   test('rejects unsupported locales without writing', () async {
     final repository = MemorySettingsRepository();
     final container = ProviderContainer(
@@ -74,4 +130,19 @@ final class _ControlledRepository implements SettingsRepository {
     if (localeWrites > 1) return Future<void>.value();
     return locale.future;
   }
+}
+
+final class _SequencedRepository implements SettingsRepository {
+  final started = <ThemeMode>[];
+  final gates = [Completer<void>(), Completer<void>()];
+  @override
+  Future<SettingsState> read() async => const SettingsState();
+  @override
+  Future<void> writeThemeMode(ThemeMode value) {
+    started.add(value);
+    return gates[started.length - 1].future;
+  }
+
+  @override
+  Future<void> writeLocale(Locale? value) async {}
 }

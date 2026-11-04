@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_template/app/app.dart';
 import 'package:flutter_template/app/config/app_config.dart';
 import 'package:flutter_template/app/settings/settings.dart';
 import 'package:flutter_template/app/startup/bootstrap_resources.dart';
@@ -146,6 +147,120 @@ void main() {
     newContainer.dispose();
     await resources.dispose();
   });
+
+  test(
+    'active drain finishes accepted commands and rejects new ones',
+    () async {
+      final queue = SettingsCommandQueue();
+      final gate = Completer<void>();
+      final started = <int>[];
+      Future<SettingsWriteResult> command(int number) =>
+          queue.enqueue(queue.generation, () async {
+            started.add(number);
+            if (number == 1) await gate.future;
+            return const SettingsWriteSuccess(SettingsState());
+          });
+      final first = command(1);
+      final second = command(2);
+      await Future<void>.delayed(Duration.zero);
+      queue.closeForDrain();
+      final rejected = await command(3);
+      expect(
+        (rejected as SettingsWriteFailure).kind,
+        SettingsFailureKind.cancelled,
+      );
+      expect(started, [1]);
+      var drained = false;
+      final drain = queue.drained.then((_) => drained = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(drained, isFalse);
+      gate.complete();
+      expect(await first, isA<SettingsWriteSuccess>());
+      expect(await second, isA<SettingsWriteSuccess>());
+      await drain;
+      expect(started, [1, 2]);
+      expect(drained, isTrue);
+    },
+  );
+
+  test(
+    'failed in-flight write after disposal is reported before recovery reads',
+    () async {
+      final repository = _DelayedRepository();
+      final resources = BootstrapResources(
+        config: AppConfig.parse(),
+        repository: repository,
+        initialSettings: const SettingsState(),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          settingsQueueProvider.overrideWithValue(resources.settingsQueue),
+          settingsRepositoryProvider.overrideWithValue(repository),
+        ],
+        retry: (count, error) => null,
+      );
+      final notifier = container.read(settingsProvider.notifier);
+      final first = notifier.setThemeMode(ThemeMode.dark);
+      final second = notifier.setLocale(const Locale('zh'));
+      await Future<void>.delayed(Duration.zero);
+      container.dispose();
+      final recovery = resources.recoverSettings();
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.reads, 0);
+      expect(resources.settingsQueue.isOpen, isFalse);
+      repository.write.completeError(const SettingsStorageException());
+      expect(
+        (await first as SettingsWriteFailure).kind,
+        SettingsFailureKind.storageWrite,
+      );
+      expect(
+        (await second as SettingsWriteFailure).kind,
+        SettingsFailureKind.cancelled,
+      );
+      await recovery;
+      expect(repository.reads, 1);
+      expect(resources.initialSettings, const SettingsState());
+      expect(resources.settingsQueue.isOpen, isTrue);
+      await resources.dispose();
+    },
+  );
+
+  testWidgets(
+    'recovery view remains until the old write finishes and is reread',
+    (tester) async {
+      final repository = _DelayedRepository();
+      final resources = BootstrapResources(
+        config: AppConfig.parse(),
+        repository: repository,
+        initialSettings: const SettingsState(),
+      );
+      await tester.pumpWidget(TemplateApp(resources: resources));
+      await tester.pumpAndSettle();
+      final queue = resources.settingsQueue;
+      final write = queue.enqueue(queue.generation, () async {
+        await repository.writeThemeMode(ThemeMode.dark);
+        return const SettingsWriteSuccess(
+          SettingsState(themeMode: ThemeMode.dark),
+        );
+      });
+      await tester.pump();
+      queue.abandon(queue.generation);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(HomePage), findsNothing);
+      expect(repository.reads, 0);
+      repository.write.complete();
+      await tester.pumpAndSettle();
+      expect(await write, isA<SettingsWriteSuccess>());
+      expect(repository.reads, 1);
+      expect(resources.initialSettings.themeMode, ThemeMode.dark);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(HomePage), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await resources.dispose();
+    },
+  );
 
   test('unexpected task error does not poison FIFO', () async {
     final queue = SettingsCommandQueue();

@@ -1,5 +1,7 @@
 # Phase 1 SPEC：最小工程骨架
 
+> 2026-11-04 治理修订：本文的阶段要求和验证计划为历史记录；现行验证范围以 [开发说明 §1.3–1.4](../flutter-template-development-revised.md) 和 [阶段计划](../flutter-template-phase-plan.md) 为准，iOS 验证不再是阶段门。
+
 状态：Phase 1 已由用户确认完成（2026-11-01）。
 
 ## 治理依据与范围
