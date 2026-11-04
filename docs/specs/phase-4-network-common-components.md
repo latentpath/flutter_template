@@ -1,14 +1,14 @@
 # Phase 4 SPEC：网络与通用组件计划
 
 > 日期：2026-11-04  
-> 状态：计划草案；实施 `BLOCKED`，等待 Phase 3 阶段门证据补齐及明确推进决定。本文不代表计划已获批准或功能已交付。
+> 状态：实施中；用户于 2026-11-04 要求执行本 SPEC，Phase 4 尚未验收完成。
 
 ## 治理依据与前置条件
 
 - 治理阶段定义路径：[开发说明 §17.1 阶段 D](../flutter-template-development-revised.md#171-分阶段实施与阶段门)；工作范围与顺序：[Phase Plan §2–3](../flutter-template-phase-plan.md#3-阶段计划) 的 Phase 4。行为契约为开发说明 §10、§12.1、§13、§14；平台验证范围以 §1.3–1.4 及项目章程为准。
-- 阶段 D 规定网络示例与错误边界。Phase Plan 的 Phase 4 还安排应用信息、外链和安全日志；它们支持网络示例及模板通用能力，但 §17.1 未将其单列在 D。这里仅提出在 Phase 4 实施的范围供审阅；实施前须按 Harness 工作流确认其阶段归属和批准范围。若认定跨阶段，先修订相关规范并完成审批，不静默扩大 D。
-- [Phase 3](phase-3-settings-persistence.md) 当前为 `BLOCKED`：§7.3/§7.4 完整矩阵需逐项核对，新增测试尚无 CI 记录；真实插件失败注入的证据限制也须明确处理。先完成适用阶段门并记录证据，再由人明确决定 Phase 3 完成和推进 Phase 4。iOS 重启不阻塞。
-- 实施前重新核对工作区、锁文件、工具链、CI 和前序证据；保护已有改动。当前 `AppConfig` 已提供 Fake/API 模式及严格 HTTPS 校验；`AppException` 目前位于设置模块且仅覆盖存储用途，统一错误边界时须兼容已有设置失败与队列契约。Dio、`package_info_plus`、`url_launcher` 已列入依赖和锁文件，不等于其运行行为已验证。
+- 阶段 D 规定网络示例与错误边界。Phase Plan 的 Phase 4 还安排应用信息、外链和安全日志；它们支持网络示例及模板通用能力，但 §17.1 未将其单列在 D。这里仅提出在 Phase 4 实施的范围供审阅；阶段计划已将其明确安排在 Phase 4；用户要求执行本 SPEC，按阶段 D 示例的配套能力实施，不据此推断阶段 E/F 已完成。
+- [Phase 3](phase-3-settings-persistence.md) 已按用户此前的完成决定及补齐的阶段门证据标记完成；真实插件失败注入与 iOS 重启未验证，限制见其记录。用户于 2026-11-04 要求执行本 SPEC，作为推进 Phase 4 的决定。
+- 实施前重新核对工作区、锁文件、工具链、CI 和前序证据；保护已有改动。当前 `AppConfig` 已提供 Fake/API 模式及严格 HTTPS 校验；`AppException` 和 `AppFailure` 已移至公共错误类型，设置使用其中的存储失败类别，扩展网络错误边界时须兼容已有设置失败与队列契约。Dio、`package_info_plus`、`url_launcher` 已列入依赖和锁文件，不等于其运行行为已验证。
 
 ## 目标与边界
 
@@ -46,9 +46,32 @@ iOS 构建和运行是可选补充；未执行时标记未验证，不阻塞阶�
 
 | 项目 | 状态 |
 | --- | --- |
-| 计划和阶段范围审阅 | 待审阅 |
-| Phase 3 阶段门与推进决定 | 阻塞实施，待补证及明确决定 |
-| 实施起点 / 最终代码版本 | 待记录 |
-| 命令、设备、实际结果及 CI 链接 | 待执行 |
-| 偏离、未解决项与补验方式 | 待记录 |
+| 计划和阶段范围审阅 | 用户要求执行 SPEC；配套能力依 Phase Plan 纳入本次范围 |
+| Phase 3 阶段门与 Phase 4 推进决定 | Phase 3 证据已补齐；用户要求执行 Phase 4 |
+| 实施起点 / 最终代码版本 | 起点 `fc389f9cd17007e0a414c0fcfb6cf122fc0a62af`；最终版本尚未提交 |
+| 命令、设备、实际结果及 CI 链接 | Flutter 3.47.9 / Dart 3.13.7：锁文件解析、翻译检查、`flutter analyze`、`flutter test` 79 项通过；应用信息已在 Android 模拟器检查；最终代码 CI 待验证 |
+| 偏离、未解决项与补验方式 | 最终代码 CI 尚待验证；日志注入已覆盖受控模板路径，但插件原生日志不受模板控制；iOS 未验证。Android 主 manifest 新增 INTERNET 普通权限供显式 API 模式使用，Fake 不发请求；不使用权限则无法访问远程 API。 |
 | 阶段完成和推进决定 | 待人明确决定 |
+
+实施时工作区已有本 SPEC、Phase 3 SPEC 和阶段计划的未提交修改，保留原有内容。`package_info_plus`、`url_launcher` 和 `dio` 使用现有锁定版本，未增加依赖或升级工具链。
+
+### 2026-11-04 本地增量验证
+
+- 未提交工作区代码；Flutter 3.47.9 / Dart 3.13.7。`flutter pub get --enforce-lockfile`、`flutter gen-l10n`、翻译检查、`flutter analyze`、`flutter test`（70 项）、`flutter build apk --debug` 成功。构建含 Android 主 manifest 的 INTERNET 权限。
+- Android 模拟器 `sdk gphone64 x86 64`、Android 15 / API 35：安装 debug APK；启用飞行模式、结束进程并启动，UI 层级显示首页；在飞行模式下点击“Data example”，UI 层级显示 `Flutter` 和 `Riverpod`。之后关闭飞行模式恢复原状态。这只记录该次离线启动与展示，不证明 API、外链或插件失败行为。
+- 配置及错误映射测试通过受控 Dio 拦截器，不访问公网；尚未验证完整 SPEC 矩阵。GitHub CI 尚无对应工作区代码的运行记录，iOS 未验证。阶段完成须另由人审阅决定。
+
+### 2026-11-04 后续代码与测试
+
+- 提取加载、空与错误重试组件，按失败类别提供中英文文案；API Service 负责协议解析和外部异常分类，Repository 保持已有失败对象。启动、网络、框架、主 isolate 和错误界面记录固定日志类别。
+- 新增受控适配器取消和关闭、错误透传、应用信息替身、外链失败界面、日志路径及模拟敏感值测试；使用固定响应和替身，不请求公网。
+- Android 15 / API 35 模拟器安装本次 debug APK，打开设置页，UI 层级显示 `flutter_template 1.0.0 (1)`。外链失败当时仅有 Widget 替身证据；后续设备补证见下。CI 尚无最终代码记录；iOS 和插件原生日志未验证。
+
+- 后续修改后重新执行 `flutter analyze` 和 `flutter test`：分析无问题，79 项通过；`git diff --check` 通过。此前对相同应用代码的锁文件、本地化检查和 Android debug 构建通过。
+
+### Android 外链失败补证
+
+- `sdk gphone64 x86 64` 模拟器，Android 15 / API 35，使用本阶段未提交工作区的 debug APK。确认 Chrome 为唯一 HTTPS 处理程序且初始状态为系统默认；临时执行 `adb -s emulator-5554 shell pm disable-user --user 0 com.android.chrome`，确认 HTTPS 无可处理 Activity；在设置页点击“Open Flutter website”，UI 层级出现 `Could not open the link.`。
+- 操作结束执行 `adb -s emulator-5554 shell pm default-state --user 0 com.android.chrome`；再次确认 Chrome 状态为默认且能够解析 HTTPS。该结果只证明此模拟器无可处理程序时的反馈，不代表所有 Android 设备或其他失败原因均已验证。
+
+提交准备审查时将示例专用客户端所有者从 `core` 移至 `features/example`，未改变请求行为；移动后 `flutter analyze`、`flutter test`（79 项）及 Android debug APK 构建通过。上面的模拟器操作使用移动前的等效应用代码。

@@ -16,5 +16,20 @@
   "notFoundMessage": "找不到这个页面。",
   "backHome": "返回首页",
   "saveFailed": "设置保存失败，请重试。",
-  "saving": "保存中…"
+  "saving": "保存中…",
+  "exampleTitle": "数据示例",
+  "loading": "正在加载",
+  "exampleError": "无法加载数据。",
+  "retry": "重试",
+  "exampleEmpty": "暂无数据。",
+  "appInfoUnavailable": "无法读取应用信息",
+  "openWebsite": "打开 Flutter 网站",
+  "linkFailed": "无法打开链接。",
+  "errorTimeout": "请求超时。",
+  "errorConnection": "无法连接，请检查网络。",
+  "errorAccess": "无法访问此数据。",
+  "errorNotFound": "未找到请求的数据。",
+  "errorRateLimited": "请求过于频繁，请稍后重试。",
+  "errorServer": "服务暂不可用。",
+  "errorInvalidResponse": "服务返回的数据无效。"
 }

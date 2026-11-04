@@ -6,12 +6,15 @@ import 'package:go_router/go_router.dart';
 
 import '../core/errors/app_failure.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../features/example/example_page.dart';
+import '../core/platform/platform_services.dart';
 import 'settings/settings.dart';
 import 'startup/bootstrap_resources.dart';
 
 abstract final class AppRoutes {
   static const home = '/';
   static const settings = '/settings';
+  static const example = '/example';
 }
 
 class TemplateApp extends StatefulWidget {
@@ -71,6 +74,10 @@ class _TemplateAppState extends State<TemplateApp> {
         builder: (context, state) => const HomePage(),
       ),
       GoRoute(
+        path: AppRoutes.example,
+        builder: (context, state) => const ExamplePage(),
+      ),
+      GoRoute(
         path: AppRoutes.settings,
         builder: (context, state) => const SettingsPage(),
       ),
@@ -108,6 +115,10 @@ class _TemplateAppState extends State<TemplateApp> {
       key: ValueKey(_scopeGeneration),
       retry: (retryCount, error) => null,
       overrides: [
+        exampleLoggerProvider.overrideWithValue(widget.resources.logger),
+        exampleRepositoryProvider.overrideWith(
+          (ref) => widget.resources.exampleClient.repository,
+        ),
         settingsQueueProvider.overrideWithValue(widget.resources.settingsQueue),
         settingsRepositoryProvider.overrideWithValue(
           widget.resources.repository,
@@ -174,6 +185,11 @@ class HomePage extends StatelessWidget {
               children: [
                 Text(l.homeMessage, textAlign: TextAlign.center),
                 const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => context.push(AppRoutes.example),
+                  child: Text(l.exampleTitle),
+                ),
+                const SizedBox(height: 12),
                 FilledButton.icon(
                   onPressed: () => context.push(AppRoutes.settings),
                   icon: const Icon(Icons.settings),
@@ -187,6 +203,16 @@ class HomePage extends StatelessWidget {
     );
   }
 }
+
+final appInfoReaderProvider = Provider<AppInfoReader>(
+  (ref) => PackageAppInfoReader(),
+);
+final appInfoProvider = FutureProvider<AppInfo?>(
+  (ref) => ref.watch(appInfoReaderProvider).read(),
+);
+final externalLinkOpenerProvider = Provider<ExternalLinkOpener>(
+  (ref) => ExternalLinkOpener(),
+);
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -285,6 +311,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
               ],
             ),
+          ),
+          const Divider(),
+          ref
+              .watch(appInfoProvider)
+              .when(
+                data: (info) => Text(
+                  info == null
+                      ? l.appInfoUnavailable
+                      : '${info.name} ${info.version} (${info.buildNumber})',
+                ),
+                loading: () => Text(l.loading),
+                error: (_, _) => Text(l.appInfoUnavailable),
+              ),
+          TextButton(
+            onPressed: () async {
+              final result = await ref
+                  .read(externalLinkOpenerProvider)
+                  .open(Uri.parse('https://flutter.dev'));
+              if (context.mounted && result != ExternalLinkResult.opened) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(l.linkFailed)));
+              }
+            },
+            child: Text(l.openWebsite),
           ),
         ],
       ),

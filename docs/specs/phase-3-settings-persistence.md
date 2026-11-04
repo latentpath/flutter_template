@@ -57,4 +57,9 @@
 - 验证对象：`462a0e2676e3b25240547a80200891982fe02011` 加本次未提交工作区改动；Flutter 3.47.9 / Dart 3.13.7，`flutter analyze` 通过，`flutter test` 50 项通过。此前 [CI run #6](https://github.com/latentpath/flutter_template/actions/runs/41791684031) 仅覆盖基线提交，不包含这次修复；最终代码仍需新的 Android CI 证据。
 - `flutter build apk --debug` 本地通过；`build/app/outputs/flutter-apk/app-debug.apk` 的 SHA-256 为 `c4a77cc54953cc998118bbb0e57597486a41d67758b6ca801cbff1a435b49f89`。构建不证明设备运行；核对时 `adb devices` 无已连接设备。
 - Android 跨进程重启：用户于 2026-11-04 报告在 Pixel 7、Android 15.0（API 35）按此前提供的 APK 安装及 `adb shell am force-stop` 步骤验证，两轮均通过：深色主题与手动语言重启恢复、主题与语言均跟随系统重启恢复。验收对象为上条记录的工作区构建 APK；该 APK 在记录时重新计算 SHA-256，结果一致。证据为用户反馈，未另采集截图或日志。
-- 当前修复代码的 Android 手工重启已通过；最终代码对应的 GitHub Android CI 仍待取得。iOS 验证不阻塞；阶段完成与推进按章程由人明确决定。
+- 当前修复代码的 Android 手工重启已通过；最终代码对应的 GitHub Android CI 已通过，见下方记录。iOS 运行和重启未验证且不阻塞。
+
+### 修复代码 CI 跟踪
+
+- 修复与测试已提交为 `fc389f9cd17007e0a414c0fcfb6cf122fc0a62af`；[GitHub Actions run #7](https://github.com/latentpath/flutter_template/actions/runs/41794307850) 对应该提交。2026-11-04 核对：Android job 完成并通过，包括严格锁文件解析、本地化生成与翻译检查、静态分析、测试和 debug APK 构建。iOS Simulator job 也通过构建；编译不代表设备运行或重启验证。
+- Phase 3 原记录的并发证据、类型偏差及 Android 重启验收对象缺口已按上述记录处理；结合用户于 2026-11-03 已明确表达的完成决定，Phase 3 标记为已完成。真实插件故障注入未验证，作为限制保留；不因此声称已验证真实插件失败行为。阶段完成不自动推断已获准推进 Phase 4。

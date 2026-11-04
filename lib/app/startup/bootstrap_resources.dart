@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../features/example/example_client.dart';
+import '../../core/logging/app_logger.dart';
 import '../config/app_config.dart';
 import '../settings/settings.dart';
 
@@ -9,9 +11,15 @@ final class BootstrapResources {
     required this.repository,
     required this.initialSettings,
     this.cleanup = const [],
-  });
+    AppLogger? logger,
+  }) : logger = logger ?? AppLogger();
 
+  final AppLogger logger;
   final AppConfig config;
+  late final ExampleClientOwner exampleClient = ExampleClientOwner(
+    config,
+    logger: logger,
+  );
   final SettingsRepository repository;
   SettingsState initialSettings;
   final SettingsCommandQueue settingsQueue = SettingsCommandQueue();
@@ -37,6 +45,7 @@ final class BootstrapResources {
     if (_disposed) return;
     _disposed = true;
     settingsQueue.closeForDrain();
+    exampleClient.dispose();
     await settingsQueue.drained;
     for (final release in cleanup.reversed) {
       try {

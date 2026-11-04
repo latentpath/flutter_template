@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/logging/app_logger.dart';
 import '../app.dart';
 import '../config/app_config.dart';
 import '../settings/settings.dart';
@@ -20,10 +21,12 @@ final class DefaultBootstrap implements Bootstrap {
     required this.configLoader,
     required this.repositoryFactory,
     this.preferenceBudget = const Duration(seconds: 2),
-  });
+    AppLogger? logger,
+  }) : logger = logger ?? AppLogger();
   final AppConfig Function() configLoader;
   final SettingsRepository Function() repositoryFactory;
   final Duration preferenceBudget;
+  final AppLogger logger;
 
   @override
   Future<BootstrapResources> load() async {
@@ -50,12 +53,13 @@ final class DefaultBootstrap implements Bootstrap {
       }
     } catch (_) {
       // Unavailable preferences fall back to system defaults without overwriting storage.
-      debugPrint('[startup] preferences unavailable; using system defaults');
+      logger.record(DiagnosticEvent.startupFailure);
     }
     return BootstrapResources(
       config: config,
       repository: repository,
       initialSettings: snapshot,
+      logger: logger,
     );
   }
 }
@@ -65,7 +69,9 @@ final class StartupCoordinator extends StatefulWidget {
     super.key,
     required this.bootstrap,
     this.startupBudget = const Duration(seconds: 5),
+    this.logger,
   });
+  final AppLogger? logger;
   final Bootstrap bootstrap;
   final Duration startupBudget;
   @override
@@ -73,6 +79,7 @@ final class StartupCoordinator extends StatefulWidget {
 }
 
 final class _StartupCoordinatorState extends State<StartupCoordinator> {
+  late final AppLogger _logger = widget.logger ?? AppLogger();
   BootstrapResources? _resources;
   StartupFailureKind? _failure;
   bool _loading = true;
@@ -119,7 +126,7 @@ final class _StartupCoordinatorState extends State<StartupCoordinator> {
         },
         onError: (Object _) {
           _underlyingRunning = false;
-          debugPrint('[startup] expired bootstrap attempt failed');
+          _logger.record(DiagnosticEvent.startupFailure);
           if (mounted && _attempt == attempt) setState(() {});
         },
       );
@@ -134,7 +141,7 @@ final class _StartupCoordinatorState extends State<StartupCoordinator> {
         _loading = false;
       });
     } on FormatException {
-      debugPrint('[startup] configuration rejected');
+      _logger.record(DiagnosticEvent.startupFailure);
       if (mounted && _attempt == attempt) {
         setState(() {
           _loading = false;
@@ -142,7 +149,7 @@ final class _StartupCoordinatorState extends State<StartupCoordinator> {
         });
       }
     } on TimeoutException {
-      debugPrint('[startup] initialization budget exceeded');
+      _logger.record(DiagnosticEvent.startupFailure);
       expired = true;
       if (mounted && _attempt == attempt) {
         setState(() {
@@ -151,7 +158,7 @@ final class _StartupCoordinatorState extends State<StartupCoordinator> {
         });
       }
     } catch (_) {
-      debugPrint('[startup] required dependency initialization failed');
+      _logger.record(DiagnosticEvent.startupFailure);
       if (mounted && _attempt == attempt) {
         setState(() {
           _loading = false;

@@ -16,5 +16,20 @@
   "notFoundMessage": "This page could not be found.",
   "backHome": "Back to home",
   "saveFailed": "Could not save this setting. Please try again.",
-  "saving": "Saving…"
+  "saving": "Saving…",
+  "exampleTitle": "Data example",
+  "loading": "Loading",
+  "exampleError": "Unable to load data.",
+  "retry": "Retry",
+  "exampleEmpty": "No data available.",
+  "appInfoUnavailable": "App information unavailable",
+  "openWebsite": "Open Flutter website",
+  "linkFailed": "Could not open the link.",
+  "errorTimeout": "The request timed out.",
+  "errorConnection": "Could not connect. Check your connection.",
+  "errorAccess": "Access is not available.",
+  "errorNotFound": "The requested data was not found.",
+  "errorRateLimited": "Too many requests. Please try again later.",
+  "errorServer": "The service is unavailable.",
+  "errorInvalidResponse": "The service returned invalid data."
 }
