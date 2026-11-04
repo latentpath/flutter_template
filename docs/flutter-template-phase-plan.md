@@ -87,7 +87,7 @@ iOS 验证为可选项，不阻塞阶段完成或推进；未执行时标记“�
 | Phase 0 | 已完成（用户确认，2026-11-01） | 用户确认 | [Phase 0 SPEC 与基线记录](specs/phase-0-implementation-baseline.md)；[GitHub Actions 运行 #1 通过](https://github.com/latentpath/flutter_template/actions/runs/41286294315) | 无 |
 | Phase 1 | 已完成（用户确认，2026-11-01） | 用户确认 | 提交 `bed7df4`：[GitHub Actions 运行 #2](https://github.com/latentpath/flutter_template/actions/runs/41288782574) 的 Android 检查和 debug 构建、iOS Simulator 构建通过；详见 [Phase 1 SPEC](specs/phase-1-minimal-skeleton.md) | 设备及发布验证属于后续范围 |
 | Phase 2 | 已完成（用户确认，2026-11-03） | 用户确认 | [Phase 2 SPEC 执行记录](specs/phase-2-startup-core-ui.md)；GitHub Actions run #4 的 Android/iOS Simulator jobs 通过；本地生成/翻译检查/分析/33 项测试及 Android debug 构建通过 | 新增测试尚未进入 CI；没有设备手动验收或系统级网络隔离记录；逐初始化步骤故障矩阵仍不完整；以上限制已记录，不延伸为 Phase 3 能力验收 |
-| Phase 3 | BLOCKED（阶段门证据不完整） | 用户已同意完成 | [Phase 3 SPEC](specs/phase-3-settings-persistence.md)；[CI run #5](https://github.com/latentpath/flutter_template/actions/runs/41584294312) 双平台构建通过 | Android 重启通过；新增并发测试本地通过，完整矩阵仍待核对且新增测试尚无 CI 记录；iOS 跨进程重启未验证且不阻塞 |
-| Phase 4 | 待开始 | 待指定 | 待执行 | 待实施时记录 |
+| Phase 3 | BLOCKED（修复后的代码待 CI 证据） | 用户已同意完成 | [Phase 3 SPEC](specs/phase-3-settings-persistence.md)；[CI run #6](https://github.com/latentpath/flutter_template/actions/runs/41791684031) 覆盖修复前基线 | 修复与补充测试本地通过；用户报告修复后 Android 两轮重启通过；修复后代码待对应 CI；iOS 重启未验证且不阻塞 |
+| Phase 4 | 待开始（实施受前置阶段门阻塞） | 待指定 | [Phase 4 SPEC 计划草案](specs/phase-4-network-common-components.md) | Phase 3 阶段门及推进决定待完成；Phase 4 范围待审阅 |
 | Phase 5 | 待开始 | 待指定 | 待执行 | 待实施时记录 |
 | Phase 6 | 待开始 | 待指定 | 待执行 | 待实施时记录 |

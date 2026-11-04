@@ -6,12 +6,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_template/app/app.dart';
 import 'package:flutter_template/app/config/app_config.dart';
 import 'package:flutter_template/app/settings/settings.dart';
+import 'package:flutter_template/core/errors/app_failure.dart';
 import 'package:flutter_template/app/startup/bootstrap_resources.dart';
 // The plugin's locked platform interface supplies its official in-memory test implementation.
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/types.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +42,104 @@ void main() {
         await repository.read(),
         const SettingsState(themeMode: ThemeMode.dark),
       );
+    },
+  );
+
+  test(
+    'preference errors are classified once without retrying writes',
+    () async {
+      final platform = _FailingPreferences();
+      SharedPreferencesAsyncPlatform.instance = platform;
+      final repository = PreferencesSettingsRepository();
+      await expectLater(
+        repository.read(),
+        throwsA(
+          isA<AppException>()
+              .having((e) => e.failure.kind, 'kind', AppFailureKind.storageRead)
+              .having((e) => e.cause, 'cause', isA<Exception>())
+              .having((e) => e.stackTrace, 'stack', isNotNull),
+        ),
+      );
+      await expectLater(
+        repository.writeThemeMode(ThemeMode.dark),
+        throwsA(
+          isA<AppException>().having(
+            (e) => e.failure.kind,
+            'kind',
+            AppFailureKind.storageWrite,
+          ),
+        ),
+      );
+      expect(platform.writes, 1);
+    },
+  );
+
+  test(
+    'recovery keeps commands closed until the delayed read completes',
+    () async {
+      final repository = _DelayedReadRepository();
+      final resources = BootstrapResources(
+        config: AppConfig.parse(),
+        repository: repository,
+        initialSettings: const SettingsState(),
+      );
+      final queue = resources.settingsQueue;
+      final recovery = resources.recoverSettings();
+      await Future<void>.delayed(Duration.zero);
+      expect(repository.reads, 1);
+      var called = false;
+      final rejected = await queue.enqueue(queue.generation, () async {
+        called = true;
+        return const SettingsWriteSuccess(SettingsState());
+      });
+      expect(
+        (rejected as SettingsWriteFailure).failure.kind,
+        AppFailureKind.cancelled,
+      );
+      expect(called, isFalse);
+      expect(queue.isOpen, isFalse);
+      repository.readResult.complete(
+        const SettingsState(themeMode: ThemeMode.dark),
+      );
+      await recovery;
+      expect(queue.isOpen, isTrue);
+      expect(resources.initialSettings.themeMode, ThemeMode.dark);
+      expect(
+        await queue.enqueue(
+          queue.generation,
+          () async => const SettingsWriteSuccess(SettingsState()),
+        ),
+        isA<SettingsWriteSuccess>(),
+      );
+      await resources.dispose();
+    },
+  );
+
+  test(
+    'resources wait for accepted writes before releasing dependencies',
+    () async {
+      final repository = _DelayedRepository();
+      var released = false;
+      final resources = BootstrapResources(
+        config: AppConfig.parse(),
+        repository: repository,
+        initialSettings: const SettingsState(),
+        cleanup: [() => released = true],
+      );
+      final queue = resources.settingsQueue;
+      final write = queue.enqueue(queue.generation, () async {
+        await repository.writeThemeMode(ThemeMode.dark);
+        return const SettingsWriteSuccess(SettingsState());
+      });
+      await Future<void>.delayed(Duration.zero);
+      final disposal = resources.dispose();
+      await Future<void>.delayed(Duration.zero);
+      expect(released, isFalse);
+      expect(queue.isOpen, isFalse);
+      repository.write.complete();
+      await write;
+      await disposal;
+      expect(released, isTrue);
     },
   );
 
@@ -72,8 +173,8 @@ void main() {
       repository.write.complete();
       expect(await first, isA<SettingsWriteSuccess>());
       expect(
-        (await second as SettingsWriteFailure).kind,
-        SettingsFailureKind.cancelled,
+        (await second as SettingsWriteFailure).failure.kind,
+        AppFailureKind.cancelled,
       );
       await recovery;
       expect(ran, isFalse);
@@ -96,6 +197,12 @@ void main() {
       return const SettingsWriteSuccess(SettingsState());
     });
     await Future<void>.delayed(Duration.zero);
+    await expectLater(
+      resources.recoverSettings(budget: const Duration(milliseconds: 1)),
+      throwsA(isA<TimeoutException>()),
+    );
+    expect(queue.isOpen, isFalse);
+    expect(repository.reads, 0);
     await expectLater(
       resources.recoverSettings(budget: const Duration(milliseconds: 1)),
       throwsA(isA<TimeoutException>()),
@@ -129,8 +236,8 @@ void main() {
     repository.write.complete();
     expect(await first, isA<SettingsWriteSuccess>());
     expect(
-      (await second as SettingsWriteFailure).kind,
-      SettingsFailureKind.cancelled,
+      (await second as SettingsWriteFailure).failure.kind,
+      AppFailureKind.cancelled,
     );
     await recovery;
     final newContainer = ProviderContainer(
@@ -166,8 +273,8 @@ void main() {
       queue.closeForDrain();
       final rejected = await command(3);
       expect(
-        (rejected as SettingsWriteFailure).kind,
-        SettingsFailureKind.cancelled,
+        (rejected as SettingsWriteFailure).failure.kind,
+        AppFailureKind.cancelled,
       );
       expect(started, [1]);
       var drained = false;
@@ -208,14 +315,16 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(repository.reads, 0);
       expect(resources.settingsQueue.isOpen, isFalse);
-      repository.write.completeError(const SettingsStorageException());
-      expect(
-        (await first as SettingsWriteFailure).kind,
-        SettingsFailureKind.storageWrite,
+      repository.write.completeError(
+        const AppException(AppFailure(AppFailureKind.storageWrite)),
       );
       expect(
-        (await second as SettingsWriteFailure).kind,
-        SettingsFailureKind.cancelled,
+        (await first as SettingsWriteFailure).failure.kind,
+        AppFailureKind.storageWrite,
+      );
+      expect(
+        (await second as SettingsWriteFailure).failure.kind,
+        AppFailureKind.cancelled,
       );
       await recovery;
       expect(repository.reads, 1);
@@ -262,6 +371,40 @@ void main() {
     },
   );
 
+  testWidgets('recovery timeout shows restart guidance and keeps the barrier', (
+    tester,
+  ) async {
+    final repository = _DelayedRepository();
+    final resources = BootstrapResources(
+      config: AppConfig.parse(),
+      repository: repository,
+      initialSettings: const SettingsState(),
+    );
+    await tester.pumpWidget(TemplateApp(resources: resources));
+    await tester.pumpAndSettle();
+    final queue = resources.settingsQueue;
+    final write = queue.enqueue(queue.generation, () async {
+      await repository.writeThemeMode(ThemeMode.dark);
+      return const SettingsWriteSuccess(SettingsState());
+    });
+    await tester.pump();
+    queue.abandon(queue.generation);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+    expect(
+      find.text('Settings recovery failed. Please restart the app.'),
+      findsOneWidget,
+    );
+    expect(queue.isOpen, isFalse);
+    expect(repository.reads, 0);
+    repository.write.complete();
+    await tester.pump();
+    await write;
+    await tester.pumpWidget(const SizedBox.shrink());
+    await resources.dispose();
+  });
+
   test('unexpected task error does not poison FIFO', () async {
     final queue = SettingsCommandQueue();
     final failed = queue.enqueue(
@@ -275,6 +418,40 @@ void main() {
     await expectLater(failed, throwsStateError);
     expect(await next, isA<SettingsWriteSuccess>());
   });
+}
+
+final class _FailingPreferences extends InMemorySharedPreferencesAsync {
+  _FailingPreferences() : super.empty();
+  int writes = 0;
+  @override
+  Future<Map<String, Object>> getPreferences(
+    GetPreferencesParameters parameters,
+    SharedPreferencesOptions options,
+  ) async => throw Exception('read failure');
+  @override
+  Future<bool> setString(
+    String key,
+    String value,
+    SharedPreferencesOptions options,
+  ) async {
+    writes++;
+    throw Exception('write failure');
+  }
+}
+
+final class _DelayedReadRepository implements SettingsRepository {
+  final readResult = Completer<SettingsState>();
+  int reads = 0;
+  @override
+  Future<SettingsState> read() {
+    reads++;
+    return readResult.future;
+  }
+
+  @override
+  Future<void> writeThemeMode(ThemeMode mode) async {}
+  @override
+  Future<void> writeLocale(Locale? locale) async {}
 }
 
 final class _DelayedRepository implements SettingsRepository {

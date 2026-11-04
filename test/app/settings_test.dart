@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_template/app/settings/settings.dart';
+import 'package:flutter_template/core/errors/app_failure.dart';
 
 void main() {
   test(
@@ -27,7 +28,9 @@ void main() {
       repository.theme.complete();
       expect(await first, isA<SettingsWriteSuccess>());
       expect(repository.localeWrites, 1);
-      repository.locale.completeError(const SettingsStorageException());
+      repository.locale.completeError(
+        const AppException(AppFailure(AppFailureKind.storageWrite)),
+      );
       expect(await second, isA<SettingsWriteFailure>());
       expect(
         container.read(settingsProvider),

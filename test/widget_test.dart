@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_template/app/app.dart';
 import 'package:flutter_template/app/config/app_config.dart';
 import 'package:flutter_template/app/settings/settings.dart';
+import 'package:flutter_template/core/errors/app_failure.dart';
 import 'package:flutter_template/app/startup/startup.dart';
 
 void main() {
@@ -205,6 +206,58 @@ void main() {
     expect(find.byType(LinearProgressIndicator), findsNothing);
   });
 
+  for (final fail in [false, true]) {
+    testWidgets(
+      'settings page may be closed while a write ${fail ? 'fails' : 'succeeds'}',
+      (tester) async {
+        final repository = _PendingWriteRepository();
+        final resources = _resources(repository: repository);
+        await tester.pumpWidget(TemplateApp(resources: resources));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Settings'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Dark'));
+        await tester.pump();
+        expect(repository.writes, 1);
+        await tester.tap(find.byType(BackButton));
+        await tester.pumpAndSettle();
+        expect(find.text('Home'), findsOneWidget);
+        if (fail) {
+          repository.pending.completeError(
+            const AppException(AppFailure(AppFailureKind.storageWrite)),
+          );
+        } else {
+          repository.pending.complete();
+        }
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(repository.writes, 1);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await resources.dispose();
+      },
+    );
+  }
+
+  testWidgets('unexpected settings error reaches Flutter error boundary', (
+    tester,
+  ) async {
+    final repository = _PendingWriteRepository();
+    final resources = _resources(repository: repository);
+    await tester.pumpWidget(TemplateApp(resources: resources));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dark'));
+    await tester.pump();
+    repository.pending.completeError(StateError('programming failure'));
+    await tester.pump();
+    expect(tester.takeException(), isA<StateError>());
+    expect(repository.writes, 1);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await resources.dispose();
+  });
+
   testWidgets(
     'system Simplified Chinese locale resolves to Chinese resources',
     (tester) async {
@@ -381,10 +434,27 @@ final class _FailingWriteRepository implements SettingsRepository {
   Future<SettingsState> read() async => value;
 
   @override
-  Future<void> writeThemeMode(ThemeMode value) =>
-      Future<void>.error(const SettingsStorageException());
+  Future<void> writeThemeMode(ThemeMode value) => Future<void>.error(
+    const AppException(AppFailure(AppFailureKind.storageWrite)),
+  );
 
   @override
-  Future<void> writeLocale(Locale? value) =>
-      Future<void>.error(const SettingsStorageException());
+  Future<void> writeLocale(Locale? value) => Future<void>.error(
+    const AppException(AppFailure(AppFailureKind.storageWrite)),
+  );
+}
+
+final class _PendingWriteRepository implements SettingsRepository {
+  final pending = Completer<void>();
+  int writes = 0;
+  @override
+  Future<SettingsState> read() async => const SettingsState();
+  @override
+  Future<void> writeThemeMode(ThemeMode value) {
+    writes++;
+    return pending.future;
+  }
+
+  @override
+  Future<void> writeLocale(Locale? value) async {}
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_template/app/config/app_config.dart';
 import 'package:flutter_template/app/settings/settings.dart';
+import 'package:flutter_template/core/errors/app_failure.dart';
 import 'package:flutter_template/app/startup/startup.dart';
 
 void main() {
@@ -62,7 +63,7 @@ final class _FailingReadRepository implements SettingsRepository {
   int writes = 0;
   @override
   Future<SettingsState> read() =>
-      Future.error(const SettingsStorageException());
+      Future.error(const AppException(AppFailure(AppFailureKind.storageRead)));
   @override
   Future<void> writeThemeMode(ThemeMode value) async => writes++;
   @override

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/errors/app_failure.dart';
 import '../config/app_config.dart';
 
 @immutable
@@ -38,14 +39,6 @@ abstract interface class SettingsRepository {
   Future<void> writeLocale(Locale? value);
 }
 
-class AppException implements Exception {
-  const AppException();
-}
-
-final class SettingsStorageException extends AppException {
-  const SettingsStorageException();
-}
-
 final class MemorySettingsRepository implements SettingsRepository {
   MemorySettingsRepository([this.value = const SettingsState()]);
   SettingsState value;
@@ -72,8 +65,14 @@ final class PreferencesSettingsRepository implements SettingsRepository {
     final Map<String, Object?> values;
     try {
       values = await _preferences.getAll(allowList: {themeKey, localeKey});
-    } on Exception {
-      throw const SettingsStorageException();
+    } on AppException {
+      rethrow;
+    } on Exception catch (error, stack) {
+      throw AppException(
+        const AppFailure(AppFailureKind.storageRead),
+        cause: error,
+        stackTrace: stack,
+      );
     }
     final theme = switch (values[themeKey]) {
       'light' => ThemeMode.light,
@@ -102,8 +101,14 @@ final class PreferencesSettingsRepository implements SettingsRepository {
   Future<void> _write(String key, String value) async {
     try {
       await _preferences.setString(key, value);
-    } on Exception {
-      throw const SettingsStorageException();
+    } on AppException {
+      rethrow;
+    } on Exception catch (error, stack) {
+      throw AppException(
+        const AppFailure(AppFailureKind.storageWrite),
+        cause: error,
+        stackTrace: stack,
+      );
     }
   }
 }
@@ -126,12 +131,12 @@ final class SettingsCommandQueue {
   ) {
     if (!_open || generation != _generation) {
       return Future.value(
-        const SettingsWriteFailure(SettingsFailureKind.cancelled),
+        const SettingsWriteFailure(AppFailure(AppFailureKind.cancelled)),
       );
     }
     final result = _tail.then<SettingsWriteResult>((_) async {
       if (_discard || generation != _generation) {
-        return const SettingsWriteFailure(SettingsFailureKind.cancelled);
+        return const SettingsWriteFailure(AppFailure(AppFailureKind.cancelled));
       }
       return await task();
     });
@@ -158,8 +163,6 @@ final class SettingsCommandQueue {
   }
 }
 
-enum SettingsFailureKind { storageWrite, cancelled, invalidValue }
-
 sealed class SettingsWriteResult {
   const SettingsWriteResult();
 }
@@ -170,8 +173,8 @@ final class SettingsWriteSuccess extends SettingsWriteResult {
 }
 
 final class SettingsWriteFailure extends SettingsWriteResult {
-  const SettingsWriteFailure(this.kind);
-  final SettingsFailureKind kind;
+  const SettingsWriteFailure(this.failure);
+  final AppFailure failure;
 }
 
 final settingsQueueProvider = Provider<SettingsCommandQueue>(
@@ -209,7 +212,9 @@ final class SettingsNotifier extends Notifier<SettingsState> {
           await ref.read(settingsRepositoryProvider).writeThemeMode(mode);
         } on AppException {
           debugPrint('[settings] theme write failed');
-          return const SettingsWriteFailure(SettingsFailureKind.storageWrite);
+          return const SettingsWriteFailure(
+            AppFailure(AppFailureKind.storageWrite),
+          );
         }
         if (ref.mounted) state = candidate;
         return SettingsWriteSuccess(candidate);
@@ -220,7 +225,7 @@ final class SettingsNotifier extends Notifier<SettingsState> {
         (locale.languageCode != 'en' && locale.languageCode != 'zh' ||
             locale.countryCode != null && locale.countryCode != 'CN')) {
       return Future.value(
-        const SettingsWriteFailure(SettingsFailureKind.invalidValue),
+        const SettingsWriteFailure(AppFailure(AppFailureKind.invalidValue)),
       );
     }
     final normalized = locale == null ? null : Locale(locale.languageCode);
@@ -233,7 +238,9 @@ final class SettingsNotifier extends Notifier<SettingsState> {
         await ref.read(settingsRepositoryProvider).writeLocale(normalized);
       } on AppException {
         debugPrint('[settings] locale write failed');
-        return const SettingsWriteFailure(SettingsFailureKind.storageWrite);
+        return const SettingsWriteFailure(
+          AppFailure(AppFailureKind.storageWrite),
+        );
       }
       if (ref.mounted) state = candidate;
       return SettingsWriteSuccess(candidate);

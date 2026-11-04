@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/errors/app_failure.dart';
 import '../l10n/generated/app_localizations.dart';
 import 'settings/settings.dart';
 import 'startup/bootstrap_resources.dart';
@@ -210,7 +211,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (result is SettingsWriteFailure &&
-        result.kind != SettingsFailureKind.cancelled) {
+        result.failure.kind != AppFailureKind.cancelled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).saveFailed)),
       );
