@@ -1,7 +1,7 @@
 # Phase 4 SPEC：网络与通用组件计划
 
 > 日期：2026-11-04  
-> 状态：实施中；用户于 2026-11-04 要求执行本 SPEC，Phase 4 尚未验收完成。
+> 状态：已完成；用户于 2026-11-06 确认 Phase 4 完成，并要求执行 Phase 5。
 
 ## 治理依据与前置条件
 
@@ -48,10 +48,10 @@ iOS 构建和运行是可选补充；未执行时标记未验证，不阻塞阶�
 | --- | --- |
 | 计划和阶段范围审阅 | 用户要求执行 SPEC；配套能力依 Phase Plan 纳入本次范围 |
 | Phase 3 阶段门与 Phase 4 推进决定 | Phase 3 证据已补齐；用户要求执行 Phase 4 |
-| 实施起点 / 最终代码版本 | 起点 `fc389f9cd17007e0a414c0fcfb6cf122fc0a62af`；最终版本尚未提交 |
-| 命令、设备、实际结果及 CI 链接 | Flutter 3.47.9 / Dart 3.13.7：锁文件解析、翻译检查、`flutter analyze`、`flutter test` 79 项通过；应用信息已在 Android 模拟器检查；最终代码 CI 待验证 |
-| 偏离、未解决项与补验方式 | 最终代码 CI 尚待验证；日志注入已覆盖受控模板路径，但插件原生日志不受模板控制；iOS 未验证。Android 主 manifest 新增 INTERNET 普通权限供显式 API 模式使用，Fake 不发请求；不使用权限则无法访问远程 API。 |
-| 阶段完成和推进决定 | 待人明确决定 |
+| 实施起点 / 最终代码版本 | 起点 `fc389f9cd17007e0a414c0fcfb6cf122fc0a62af`；实施代码 `adf371e29cac6f7dd31a687081e34242db3c64a7` |
+| 命令、设备、实际结果及 CI 链接 | Flutter 3.47.9 / Dart 3.13.7：锁文件解析、翻译检查、`flutter analyze`、`flutter test` 79 项通过；应用信息已在 Android 模拟器检查；[CI run #8](https://github.com/latentpath/flutter_template/actions/runs/41801171185) 对应实施代码且 Android 通过 |
+| 偏离、未解决项与补验方式 | 阶段完成已由用户确认；日志注入已覆盖受控模板路径，但插件原生日志不受模板控制；iOS 未验证。Android 主 manifest 新增 INTERNET 普通权限供显式 API 模式使用，Fake 不发请求；不使用权限则无法访问远程 API。 |
+| 阶段完成和推进决定 | 用户于 2026-11-06 确认 Phase 4 完成并要求执行 Phase 5 |
 
 实施时工作区已有本 SPEC、Phase 3 SPEC 和阶段计划的未提交修改，保留原有内容。`package_info_plus`、`url_launcher` 和 `dio` 使用现有锁定版本，未增加依赖或升级工具链。
 
@@ -75,3 +75,8 @@ iOS 构建和运行是可选补充；未执行时标记未验证，不阻塞阶�
 - 操作结束执行 `adb -s emulator-5554 shell pm default-state --user 0 com.android.chrome`；再次确认 Chrome 状态为默认且能够解析 HTTPS。该结果只证明此模拟器无可处理程序时的反馈，不代表所有 Android 设备或其他失败原因均已验证。
 
 提交准备审查时将示例专用客户端所有者从 `core` 移至 `features/example`，未改变请求行为；移动后 `flutter analyze`、`flutter test`（79 项）及 Android debug APK 构建通过。上面的模拟器操作使用移动前的等效应用代码。
+
+### 提交与 CI 核对
+
+- 实施代码提交 `adf371e29cac6f7dd31a687081e34242db3c64a7`；[GitHub Actions run #8](https://github.com/latentpath/flutter_template/actions/runs/41801171185) 对应该提交，状态 completed / success。Android job 的严格锁文件解析、本地化生成与翻译检查、静态分析、测试和 debug APK 构建均通过。
+- iOS Simulator job 构建通过，属于非阻塞的补充编译证据；iOS 模拟器运行、真机和重启行为仍未验证。用户于 2026-11-06 确认阶段完成并要求执行 Phase 5。

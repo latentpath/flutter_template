@@ -30,8 +30,11 @@ jobs:
 
       - run: flutter --version
       - run: flutter pub get --enforce-lockfile
+      - run: git diff --exit-code -- pubspec.lock
       - run: flutter gen-l10n
       - run: python3 tool/check_translations.py
+      - run: python3 -m unittest discover -s tool/tests
+      - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
       - run: flutter build apk --debug

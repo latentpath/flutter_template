@@ -35,13 +35,15 @@ flutter run --dart-define=DATA_SOURCE_MODE=api --dart-define=API_BASE_URI=https:
 flutter pub get --enforce-lockfile
 flutter gen-l10n
 python3 tool/check_translations.py
+python3 -m unittest discover -s tool/tests
+dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
 flutter build apk --debug
 flutter build ios --simulator --no-codesign
 ```
 
-iOS 构建为可选验证，命令需在 macOS/Xcode 执行。`flutter gen-l10n` 从 `lib/l10n/app_en.arb` 和 `app_zh.arb` 生成本地化代码；生成目录不提交。CI 配置使用 `.fvmrc` 并在构建前生成/检查翻译。Phase 2 的实际验证记录见 [Phase 2 SPEC](docs/specs/phase-2-startup-core-ui.md)。Simulator 构建不能代替设备或发布验证。示例应用标识 `com.example.*` 必须由派生应用替换。
+iOS 构建为可选验证，命令需在 macOS/Xcode 执行。`flutter gen-l10n` 从 `lib/l10n/app_en.arb` 和 `app_zh.arb` 生成本地化代码；生成目录不提交。CI 配置使用 `.fvmrc` 并在构建前生成/检查翻译；先运行 `flutter gen-l10n` 生成 `.dart_tool/untranslated.json`，翻译检查要求报告为空并核对 ARB 键和占位符。Phase 2 的实际验证记录见 [Phase 2 SPEC](docs/specs/phase-2-startup-core-ui.md)。Simulator 构建不能代替设备或发布验证。示例应用标识 `com.example.*` 必须由派生应用替换。
 
 ## 设置持久化验证
 
