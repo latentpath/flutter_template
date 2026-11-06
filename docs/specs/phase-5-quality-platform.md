@@ -73,3 +73,10 @@ CI 已增加格式、锁文件和翻译检查自测；工作流状态失败与�
 
 - 用户创建仓库 Ruleset 后，查询 GitHub `rules/branches/main`，确认生效规则 ID `26664668`：禁止删除及强制推送；要求 Pull Request，批准数为 0；要求来自 GitHub Actions 的 `Android` 状态检查通过。iOS 未列为必需检查，符合非阻塞约定；严格要求分支更新至最新基线未启用。
 - 该结果证明规则已配置并针对 `main` 生效；失败状态实际阻止合并仍须通过受控 Pull Request 验证。此后使用独立分支提交变更，不再直接推送 `main`。
+
+### 2026-11-06 合并门禁负向验证
+
+- 以 `cf3a4b5` 为基线建立测试分支，在提交 `3e44195e08cf8574d070a08a0117918abdaf4580` 中加入仅用于门禁验证的故意失败测试。该测试在本地返回失败。
+- [测试 PR #2](https://github.com/latentpath/flutter_template/pull/2) 的 [GitHub Actions run #42151160668](https://github.com/latentpath/flutter_template/actions/runs/42151160668) 中，必需的 Android job 在 `python3 -m unittest discover -s tool/tests` 步骤失败。用户确认 PR 页面显示检查失败且不能合并。
+- 用户已关闭 PR；GitHub API 确认其为 closed 且未合并。故意失败的测试未进入 `main`。此结果验证一次失败检查被规则阻止合并，其他失败类型的命令级负向证据见前文。
+- Phase 5 验收证据已记录，阶段完成及是否推进 Phase 6 仍须由人明确决定。
