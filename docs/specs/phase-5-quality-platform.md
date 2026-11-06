@@ -61,3 +61,15 @@ CI 已增加格式、锁文件和翻译检查自测；工作流状态失败与�
 - `git ls-remote --heads origin main` 成功并确认远端仍为 `adf371e`；`GIT_TERMINAL_PROMPT=0 git push --dry-run origin HEAD:refs/heads/codex/phase5-quality` 因无法读取 GitHub 用户名而失败。GitHub 连接器不可用、浏览器访问宿主不可用，无法检查仓库权限及分支保护，也无法推送触发 CI。待配置 GitHub Git 凭据后重新验证；不要在聊天或仓库中提供 Token。
 
 剩余阶段门：TalkBack 的语音播报和实际操作需人工检查；最终代码需推送并运行 GitHub Android CI，核实必需状态检查及分支保护。阶段仍为实施中。
+
+### 2026-11-06 CI 与 TalkBack 补充
+
+- 使用本机已有 SSH 密钥认证为 `latentpath`，将提交 `a9bf26466010` 推送至 `main`；HTTPS 凭据助手未配置的先前结果不代表本机没有 Git 凭据。
+- [GitHub Actions run #42143775581](https://github.com/latentpath/flutter_template/actions/runs/42143775581) 对应该提交，Android job 的锁文件、翻译、格式、分析、测试和 debug 构建均通过；iOS Simulator 编译作为补充证据通过，不代表 iOS 运行已验证。
+- 用户报告 TalkBack 验证通过，使用 Pixel 7 模拟器、Android 15.0 / API 35；逐项操作细节未单独记录。不将语音播报的通过归因于自动化检查。
+- GitHub 分支保护的认证接口返回 HTTP 401；用户表示无法查看或不确定。是否将 Android 检查设为合并必需条件仍未确认。格式、分析、测试和构建的失败注入已有本地隔离副本证据，GitHub 上的故障注入及合并阻止行为尚未验证。Phase 5 仍为实施中，待补齐证据并由人决定阶段完成。
+
+### 2026-11-06 main 分支规则
+
+- 用户创建仓库 Ruleset 后，查询 GitHub `rules/branches/main`，确认生效规则 ID `26664668`：禁止删除及强制推送；要求 Pull Request，批准数为 0；要求来自 GitHub Actions 的 `Android` 状态检查通过。iOS 未列为必需检查，符合非阻塞约定；严格要求分支更新至最新基线未启用。
+- 该结果证明规则已配置并针对 `main` 生效；失败状态实际阻止合并仍须通过受控 Pull Request 验证。此后使用独立分支提交变更，不再直接推送 `main`。
