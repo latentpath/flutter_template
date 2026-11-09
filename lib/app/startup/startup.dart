@@ -1,0 +1,283 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+import '../../core/logging/app_logger.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../app.dart';
+import '../config/app_config.dart';
+import '../settings/settings.dart';
+import 'bootstrap_resources.dart';
+
+export 'bootstrap_resources.dart';
+
+enum StartupFailureKind { configuration, dependency, timeout, busy }
+
+abstract interface class Bootstrap {
+  Future<BootstrapResources> load();
+}
+
+final class DefaultBootstrap implements Bootstrap {
+  DefaultBootstrap({
+    required this.configLoader,
+    required this.repositoryFactory,
+    this.preferenceBudget = const Duration(seconds: 2),
+    AppLogger? logger,
+  }) : logger = logger ?? AppLogger();
+  final AppConfig Function() configLoader;
+  final SettingsRepository Function() repositoryFactory;
+  final Duration preferenceBudget;
+  final AppLogger logger;
+
+  @override
+  Future<BootstrapResources> load() async {
+    final config = configLoader();
+    final repository = repositoryFactory();
+    SettingsState snapshot = const SettingsState();
+    var readExpired = false;
+    try {
+      final read = repository.read();
+      // Future.timeout only limits how long startup waits; it cannot cancel a
+      // platform preference read already in progress. Keep a handler attached
+      // to the original future so a later error is still observed instead of
+      // becoming an unhandled asynchronous error. A late success is harmless:
+      // the snapshot used below has already fallen back to system defaults.
+      read.then<void>(
+        (_) {},
+        onError: (Object _, StackTrace stack) {
+          if (readExpired) {
+            logger.record(DiagnosticEvent.startupFailure, stack: stack);
+          }
+        },
+      );
+      snapshot = await read.timeout(
+        preferenceBudget,
+        onTimeout: () {
+          readExpired = true;
+          throw TimeoutException('Preference read timed out');
+        },
+      );
+      if (snapshot.locale != null) {
+        if (!{'en', 'zh'}.contains(snapshot.locale!.languageCode)) {
+          snapshot = snapshot.copyWith(clearLocale: true);
+        } else {
+          snapshot = snapshot.copyWith(
+            locale: Locale(snapshot.locale!.languageCode),
+          );
+        }
+      }
+      if (!{
+        ThemeMode.system,
+        ThemeMode.light,
+        ThemeMode.dark,
+      }.contains(snapshot.themeMode)) {
+        snapshot = const SettingsState();
+      }
+    } catch (_, stack) {
+      // Unavailable preferences fall back to system defaults without overwriting storage.
+      logger.record(DiagnosticEvent.startupFailure, stack: stack);
+    }
+    return BootstrapResources(
+      config: config,
+      repository: repository,
+      initialSettings: snapshot,
+      logger: logger,
+    );
+  }
+}
+
+final class StartupCoordinator extends StatefulWidget {
+  const StartupCoordinator({
+    super.key,
+    required this.bootstrap,
+    this.startupBudget = const Duration(seconds: 5),
+    this.logger,
+  });
+  final AppLogger? logger;
+  final Bootstrap bootstrap;
+  final Duration startupBudget;
+  @override
+  State<StartupCoordinator> createState() => _StartupCoordinatorState();
+}
+
+final class _StartupCoordinatorState extends State<StartupCoordinator> {
+  late final AppLogger _logger = widget.logger ?? AppLogger();
+  BootstrapResources? _resources;
+  StartupFailureKind? _failure;
+  bool _loading = true;
+  bool _inFlight = false;
+  bool _underlyingRunning = false;
+  int _attempt = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_start());
+  }
+
+  Future<void> _start() async {
+    if (_inFlight) return;
+    if (_underlyingRunning) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _failure = StartupFailureKind.busy;
+        });
+      }
+      return;
+    }
+    _inFlight = true;
+    final attempt = ++_attempt;
+    setState(() {
+      _loading = true;
+      _failure = null;
+    });
+    var transferred = false;
+    var expired = false;
+    try {
+      final future = widget.bootstrap.load();
+      _underlyingRunning = true;
+      // A timeout stops this coordinator from waiting, but Bootstrap.load may
+      // still be opening clients or reading storage. Observe the original future
+      // for its full lifetime: late failures need logging, and resources created
+      // after this attempt expired must be disposed instead of being orphaned.
+      future.then(
+        (resource) async {
+          if (expired || _attempt != attempt || !mounted) {
+            await resource.dispose();
+          }
+          _underlyingRunning = false;
+          if (mounted && _attempt == attempt) setState(() {});
+        },
+        onError: (Object _, StackTrace stack) {
+          _underlyingRunning = false;
+          // Before timeout, the await below reports the failure in its catch
+          // branch. After timeout that await is already complete, so this
+          // observer becomes the only place that can record the late failure.
+          if (expired) {
+            _logger.record(DiagnosticEvent.startupFailure, stack: stack);
+          }
+          if (mounted && _attempt == attempt) setState(() {});
+        },
+      );
+      final resources = await future.timeout(widget.startupBudget);
+      if (!mounted || _attempt != attempt) {
+        await resources.dispose();
+        return;
+      }
+      _resources = resources;
+      transferred = true;
+      setState(() {
+        _loading = false;
+      });
+    } on FormatException {
+      _logger.record(DiagnosticEvent.startupFailure);
+      if (mounted && _attempt == attempt) {
+        setState(() {
+          _loading = false;
+          _failure = StartupFailureKind.configuration;
+        });
+      }
+    } on TimeoutException {
+      _logger.record(DiagnosticEvent.startupFailure);
+      expired = true;
+      if (mounted && _attempt == attempt) {
+        setState(() {
+          _loading = false;
+          _failure = StartupFailureKind.timeout;
+        });
+      }
+    } catch (_, stack) {
+      _logger.record(DiagnosticEvent.startupFailure, stack: stack);
+      if (mounted && _attempt == attempt) {
+        setState(() {
+          _loading = false;
+          _failure = StartupFailureKind.dependency;
+        });
+      }
+    } finally {
+      if (_attempt == attempt) _inFlight = false;
+      if (!transferred && _attempt == attempt && mounted && _loading) {
+        setState(() {
+          _loading = false;
+          _failure = StartupFailureKind.dependency;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    ++_attempt;
+    final resources = _resources;
+    if (resources != null) unawaited(resources.dispose());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resources = _resources;
+    if (resources != null) return TemplateApp(resources: resources);
+    if (_loading) return const _NeutralStartupView();
+    return _StartupFailureView(
+      kind: _failure ?? StartupFailureKind.dependency,
+      retry: _start,
+      busy: _inFlight || _underlyingRunning,
+    );
+  }
+}
+
+class _NeutralStartupView extends StatelessWidget {
+  const _NeutralStartupView();
+  @override
+  Widget build(BuildContext context) => const MaterialApp(
+    home: Scaffold(body: Center(child: CircularProgressIndicator())),
+  );
+}
+
+class _StartupFailureView extends StatelessWidget {
+  const _StartupFailureView({
+    required this.kind,
+    required this.retry,
+    required this.busy,
+  });
+  final StartupFailureKind kind;
+  final Future<void> Function() retry;
+  final bool busy;
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      home: Builder(
+        builder: (context) {
+          final l = AppLocalizations.of(context);
+          final message = switch (kind) {
+            StartupFailureKind.configuration => l.startupConfigurationFailure,
+            StartupFailureKind.timeout => l.startupTimeoutFailure,
+            StartupFailureKind.busy => l.startupBusyFailure,
+            StartupFailureKind.dependency => l.startupDependencyFailure,
+          };
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(message, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: busy ? null : retry,
+                      child: Text(l.retry),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
