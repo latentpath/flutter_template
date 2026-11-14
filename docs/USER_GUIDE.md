@@ -22,7 +22,7 @@ Android 是当前主要验证平台；iOS 是兼容目标，设备运行与签�
 
 所有命令从包含 `pubspec.yaml` 的工程根目录执行。使用 Flutter stable 3.47.9 及其随附的 Dart 3.13.7。Python 3 用于翻译检查，Git 按需用于版本管理。`.fvmrc` 固定 Flutter 版本；使用 FVM 时，将下文的 `flutter` 替换为 `fvm flutter`，`dart` 替换为 `fvm dart`。
 
-Android 开发需要 Android Studio、Android SDK、可用模拟器或设备及兼容 JDK。原生 Gradle 配置位于 `android/`。当前副本未附带 CI 配置，可在需要时自行添加。iOS 构建另需 macOS、Xcode 和对应工具链。
+Android 开发需要 Android Studio、Android SDK、可用模拟器或设备及兼容 JDK。原生 Gradle 配置位于 `android/`。GitHub Actions 会在 PR 和主分支 push 上运行 Linux 验证与 Android debug 构建；iOS 构建另需 macOS、Xcode 和对应工具链。
 
 ```sh
 flutter --version
@@ -311,17 +311,27 @@ flutter gen-l10n
 python3 tool/check_translations.py
 dart format --output=none --set-exit-if-changed lib
 dart format --output=none --set-exit-if-changed test
+dart format --output=none --set-exit-if-changed integration_test
 flutter test
-python3 -m unittest discover -s tool/tests
 flutter analyze
 flutter build apk --debug
+git diff --exit-code -- pubspec.lock
 ```
 
-当前副本附带 `test/` 与 `tool/tests/`，提交前应运行 Flutter 和 Python 测试。`lib/l10n/generated/` 由 `flutter gen-l10n` 生成并通过 `.gitignore` 排除，不要手动修改或提交。启用 Git 后，可用 `git diff --check` 检查空白问题，用 `git diff --exit-code -- pubspec.lock` 确认锁文件没有意外变化。
+翻译检查脚本由 `python3 tool/check_translations.py` 执行；当前没有独立 Python 单元测试目录。`lib/l10n/generated/` 由 `flutter gen-l10n` 生成并通过 `.gitignore` 排除，不要手动修改或提交。CI 采用相同检查顺序，并使用 `.fvmrc` 指定的 Flutter stable 3.47.9、JDK 17 和 Android SDK。
+
+集成冒烟测试调用真实 `main()`，默认 Fake 数据离线可用。先启动 Android 模拟器或连接设备并用 `flutter devices` 找到 `<device-id>`，再执行：
+
+```sh
+flutter pub get --enforce-lockfile
+flutter test integration_test/app_smoke_test.dart -d <device-id>
+```
+
+测试开始时仅将应用自己的主题和语言偏好键设为浅色与英文，作为可重复的初始状态；不清空其他 SharedPreferences 数据，也不依赖设备上已有的这两项设置或用例顺序。该集成测试目前只在本地设备运行，模拟器 CI 尚未接入，需结合 runner 成本、运行时长和稳定性另行决定是否设为合并门槛。Android TalkBack 需在真实设备或模拟器人工检查首页导航、设置选择、数据示例状态和返回焦点顺序；Widget 测试通过不能替代该检查。
 
 依赖有意变更时，同时维护约束和锁文件。普通开发不要通过删除锁文件或升级全部依赖来消除检查失败。不要提交缓存、构建产物、本机路径配置或签名材料；本地化输出由命令重新生成，版本管理策略由自己的项目决定。
 
-设备检查关注启动、系统返回、主题语言切换、大字体、外链失败以及结束进程后的设置恢复。编译成功不能代替设备运行验证。
+设备检查关注启动、系统返回、主题语言切换、大字体、外链失败以及结束进程后的设置恢复。深链、多环境原生 flavor/scheme 和平板专用布局是可选扩展；`APP_ENV` 仅供应用配置读取，不会创建原生隔离。复制模板后由维护者按目标平台与设备验证所选择的扩展。编译成功不能代替设备运行验证。
 
 ## 发布与签名
 

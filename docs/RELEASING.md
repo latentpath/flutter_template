@@ -6,7 +6,14 @@
 
 ## Android
 
-当前 `android/app/build.gradle.kts` 的 `release` 显式使用 `signingConfigs.getByName("debug")`；默认 release APK 只供验证，**不可分发**。由应用维护者在安全环境创建并备份自己的 keystore，保管其密码、别名和签名身份，并按 [Flutter Android 发布指南](https://docs.flutter.dev/deployment/android) 配置独立的 release signing config。`android/key.properties`、`*.jks`、`*.keystore` 已在 Android 的 `.gitignore` 中忽略；启用 Git 后仍需检查 `git status`，不要将材料放在未忽略的位置或提交到源码。CI 应使用受限制的密钥存储，普通 PR 不提供发布密钥。
+当前 `android/app/build.gradle.kts` 的 `release` 显式使用 `signingConfigs.getByName("debug")`；默认 release APK/AAB 只供验证，**不可分发到商店或交付用户**。模板没有可用于发布的签名身份。由应用维护者在安全环境创建并备份自己的 keystore，保管其密码、别名和签名身份，并按 [Flutter Android 发布指南](https://docs.flutter.dev/deployment/android) 配置独立的 release signing config。`android/key.properties`、`*.jks`、`*.keystore` 已在 Android 的 `.gitignore` 中忽略；启用 Git 后仍需检查 `git status`，不要将材料放在未忽略的位置或提交到源码。CI 的 debug 构建不读取或缓存发布凭据，普通 PR 不提供发布密钥。
+
+发布前逐项确认：
+
+- release 配置使用维护者创建的签名身份，而非 debug key；
+- APK/AAB 的签名证书指纹与预期身份一致；
+- application ID、版本号、服务环境和目标渠道均正确；
+- 已在目标平台和设备验证产物，且渠道接受该签名身份。
 
 例如在当前工程的 `android/key.properties` 中配置 `storePassword`、`keyPassword`、`keyAlias`、`storeFile`（文件位置相对 `android/app` 或使用安全的绝对路径），然后在 `android/app/build.gradle.kts` 顶部 `plugins` 块之后加载配置：
 
@@ -36,7 +43,7 @@ flutter build appbundle --release --dart-define=APP_ENV=production
 flutter build apk --release --dart-define=APP_ENV=production
 ```
 
-分别检查 `build/app/outputs/bundle/release/` 与 `build/app/outputs/flutter-apk/` 中的产物；使用 Android SDK Build Tools 的 `apksigner verify --print-certs <apk路径>` 核验 APK 签名，并将证书指纹与预期身份比对。AAB 签名另用 JDK `jarsigner -verify -verbose -certs <aab路径>` 核验，核对上传密钥与渠道的应用签名机制。检查版本与 application ID，在目标设备上验证 release 的首屏、导航、主题、语言、网络配置和平台能力，再按目标渠道要求上传。
+分别检查 `build/app/outputs/bundle/release/` 与 `build/app/outputs/flutter-apk/` 中的产物；使用 Android SDK Build Tools 的 `apksigner verify --print-certs <apk路径>` 核验 APK 签名，并将证书指纹与预期身份比对。AAB 签名另用 JDK `jarsigner -verify -verbose -certs <aab路径>` 核验，核对上传密钥与渠道的应用签名机制。检查版本与 application ID，在目标设备上验证 release 的首屏、导航、主题、语言、网络配置和平台能力。仅在确认构建使用维护者自己的 release 签名身份、并在目标平台、签名身份及目标渠道上完成验证后，才可按渠道要求交付或上传。
 
 ## iOS
 
